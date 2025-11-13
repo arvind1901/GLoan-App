@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gradious Loan App - Login</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script>
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'gradious-loan-app-default';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        let app, auth, db;
+        if (Object.keys(firebaseConfig).length > 0 && typeof firebase !== 'undefined' && typeof firebase.initializeApp === 'function') {
+            app = firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.firestore();
+            if (initialAuthToken) { auth.signInWithCustomToken(initialAuthToken).then(() => { console.log("Firebase client signed in with custom token."); }).catch((error) => { console.error("Error signing in with custom token:", error); auth.signInAnonymously().then(() => console.log("Signed in anonymously.")).catch(e => console.error("Anon sign-in failed", e)); }); } else if (!auth.currentUser) { auth.signInAnonymously().then(() => { console.log("Firebase client signed in anonymously."); }).catch((error) => { console.error("Error signing in anonymously:", error); }); }
+        } else { console.warn("Firebase config not found or SDK not loaded. Firebase features will not be available."); auth = { currentUser: { uid: 'anonymous-user', email: 'anonymous@example.com', getIdToken: async () => 'dummy-token' }, onAuthStateChanged: (callback) => { callback({ uid: 'anonymous-user', email: 'anonymous@example.com', getIdToken: async () => 'dummy-token' }); return () => {}; }, signOut: async () => { console.log("Dummy sign out"); return Promise.resolve(); }, signInWithEmailAndPassword: async (email, password) => { console.log("Dummy login"); return { user: { uid: 'dummy-user', email, getIdToken: async () => 'dummy-token' } }; }, createUserWithEmailAndPassword: async (email, password) => { console.log("Dummy signup"); return { user: { uid: 'dummy-user', email, getIdToken: async () => 'dummy-token' } }; } }; db = { collection: () => ({ doc: () => ({ set: async () => console.log("Dummy set"), get: async () => ({ data: () => ({}) }), collection: () => ({ add: async () => ({ id: 'dummy-id' }), get: async () => ({ docs: [] }), doc: () => ({ update: async () => console.log("Dummy update") }) }) }) }) }; }
+        async function getIdToken() { if (auth.currentUser) { return await auth.currentUser.getIdToken(); } return null; }
+        function getUserId() { return auth.currentUser ? auth.currentUser.uid : null; }
+    </script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="app-name">
+            <span class="orange-G">G</span>radious Loan App
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="#">Description</a></li>
+            <li><a href="#">Types of loans</a></li>
+            <li><a href="loan-calculator.html">Loan-Calculator</a></li>
+            <li><a href="apply-loan.html">Apply Loan</a></li>
+            <li><a href="loan-status.html">Status</a></li>
+            <li><a href="login.html" class="active">Login</a></li>
+            <li><a href="signup.html">Signup</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <h2>Login</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email :</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password :</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit" class="btn">Login</button>
+            </form>
+            <p class="message" style="margin-top: 15px; font-size: 14px;">Don't have an account? <a href="signup.html" style="color: #ff8c00; text-decoration: none; font-weight: bold;">Signup here</a></p>
+            <div id="loginMessage" class="message" style="display: none; margin-top: 15px;"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const loginMessage = document.getElementById('loginMessage');
+
+            try {
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+
+                const idToken = await user.getIdToken();
+                localStorage.setItem('idToken', idToken);
+                localStorage.setItem('userId', user.uid);
+
+                loginMessage.textContent = 'Login successful! Redirecting...';
+                loginMessage.style.color = '#ff8c00';
+                loginMessage.style.display = 'block';
+
+                setTimeout(() => {
+                    window.location.href = 'loan-status.html';
+                }, 1500);
+
+            } catch (error) {
+                console.error('Login error:', error);
+                let errorMessage = 'Login failed. Please check your credentials.';
+                if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+                    errorMessage = 'Invalid email or password.';
+                } else if (error.code === 'auth/invalid-email') {
+                    errorMessage = 'Invalid email format.';
+                }
+                loginMessage.textContent = errorMessage;
+                loginMessage.style.color = '#dc3545';
+                loginMessage.style.display = 'block';
+            }
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentPath = window.location.pathname.split('/').pop();
+            const navLinks = document.querySelectorAll('.nav-links a');
+            navLinks.forEach(link => {
+                const linkPath = link.href.split('/').pop();
+                link.classList.remove('active');
+                if (linkPath === currentPath || (currentPath === '' && linkPath === 'index.html')) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

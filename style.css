@@ -1,0 +1,270 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif; /* Clean, modern sans-serif */
+    background-color: #1a1a1a; /* Dark background */
+    color: #f0f0f0; /* Light text color */
+}
+
+.navbar {
+    background-color: #000000; /* Even darker for navbar */
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #ff8c00; /* Orange accent border */
+}
+
+.app-name {
+    font-size: 24px;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+.app-name .orange-G {
+    color: #ff8c00; /* Orange G for Gradious */
+}
+
+.nav-links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+}
+
+.nav-links li {
+    margin-left: 25px;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: #f0f0f0;
+    font-weight: bold;
+    transition: color 0.3s, border-bottom 0.3s;
+    padding-bottom: 5px;
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+    color: #ff8c00; /* Orange on hover/active */
+    border-bottom: 2px solid #ff8c00;
+}
+
+.container {
+    padding: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 70px); /* Adjust for navbar height */
+    box-sizing: border-box;
+}
+
+.card {
+    background-color: #2a2a2a; /* Slightly lighter dark for cards */
+    padding: 30px 40px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    width: 100%;
+    max-width: 500px;
+    text-align: center;
+}
+
+.card h2 {
+    color: #ffffff;
+    margin-bottom: 30px;
+    font-size: 28px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #f0f0f0;
+    font-weight: bold;
+}
+
+.form-group input[type="text"],
+.form-group input[type="password"],
+.form-group input[type="email"],
+.form-group input[type="number"],
+.form-group select {
+    width: calc(100% - 20px);
+    padding: 12px;
+    border: 1px solid #555;
+    border-radius: 5px;
+    background-color: #3a3a3a; /* Darker input background */
+    color: #f0f0f0;
+    font-size: 16px;
+    transition: border-color 0.3s;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="password"]:focus,
+.form-group input[type="email"]:focus,
+.form-group input[type="number"]:focus,
+.form-group select:focus {
+    border-color: #ff8c00; /* Orange border on focus */
+    outline: none;
+}
+
+.form-group input[type="file"] {
+    display: block;
+    margin-top: 10px;
+}
+
+.form-group input[type="checkbox"] {
+    margin-right: 10px;
+    accent-color: #ff8c00; /* Orange checkbox */
+}
+
+.btn {
+    background-color: #ff8c00; /* Solid orange button */
+    color: #ffffff;
+    padding: 14px 25px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+    transition: background-color 0.3s, transform 0.2s;
+    width: 100%;
+    margin-top: 20px;
+}
+
+.btn:hover {
+    background-color: #e67e00; /* Slightly darker orange on hover */
+    transform: translateY(-2px);
+}
+
+.message {
+    margin-top: 20px;
+    color: #ff8c00; /* Orange for success/info messages */
+    font-weight: bold;
+}
+
+/* Specific styles for tables */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 30px;
+}
+
+.data-table th,
+.data-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #444; /* Lighter border for table rows */
+}
+
+.data-table th {
+    background-color: #3a3a3a; /* Darker header background */
+    color: #ffffff;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.data-table td {
+    color: #f0f0f0;
+}
+
+.data-table tbody tr:hover {
+    background-color: #333; /* Slight hover effect on rows */
+}
+
+.status-approved {
+    color: #ff8c00; /* Orange for approved status */
+    font-weight: bold;
+}
+
+.admin-actions .action-btn {
+    background-color: #ff8c00;
+    color: #ffffff;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-right: 5px;
+    transition: background-color 0.3s;
+}
+
+.admin-actions .action-btn.reject {
+    background-color: #dc3545; /* Red for reject */
+}
+
+.admin-actions .action-btn:hover {
+    background-color: #e67e00;
+}
+
+.admin-actions .action-btn.reject:hover {
+    background-color: #c82333;
+}
+
+/* Home page specific */
+.home-content {
+    display: flex;
+    align-items: center;
+    gap: 50px;
+    max-width: 1000px; /* Adjust as needed */
+    margin: auto;
+}
+
+.home-image-container {
+    flex: 1;
+    text-align: center;
+}
+
+.home-image {
+    width: 100%;
+    max-width: 400px; /* Adjust size */
+    height: auto;
+    border-radius: 10px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.7);
+}
+
+.home-text-content {
+    flex: 1;
+    text-align: left;
+}
+
+.home-text-content h1 {
+    font-size: 48px;
+    color: #ffffff;
+    margin-bottom: 20px;
+}
+
+.home-text-content p {
+    font-size: 18px;
+    line-height: 1.6;
+    color: #f0f0f0;
+    margin-bottom: 30px;
+}
+
+.home-buttons .btn {
+    display: inline-block;
+    width: auto;
+    margin-right: 20px;
+}
+
+/* Calculator result display */
+.calculator-results {
+    margin-top: 30px;
+    padding: 20px;
+    background-color: #3a3a3a;
+    border-radius: 8px;
+    text-align: left;
+    border-left: 5px solid #ff8c00; /* Orange left border */
+}
+
+.calculator-results p {
+    margin-bottom: 10px;
+    font-size: 18px;
+    color: #ffffff;
+}
+
+.calculator-results p strong {
+    color: #ff8c00;
+}

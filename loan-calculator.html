@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gradious Loan App - Loan Calculator</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script>
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'gradious-loan-app-default';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        let app, auth, db;
+        if (Object.keys(firebaseConfig).length > 0 && typeof firebase !== 'undefined' && typeof firebase.initializeApp === 'function') {
+            app = firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.firestore();
+            if (initialAuthToken) { auth.signInWithCustomToken(initialAuthToken).then(() => { console.log("Firebase client signed in with custom token."); }).catch((error) => { console.error("Error signing in with custom token:", error); auth.signInAnonymously().then(() => console.log("Signed in anonymously.")).catch(e => console.error("Anon sign-in failed", e)); }); } else if (!auth.currentUser) { auth.signInAnonymously().then(() => { console.log("Firebase client signed in anonymously."); }).catch((error) => { console.error("Error signing in anonymously:", error); }); }
+        } else { console.warn("Firebase config not found or SDK not loaded. Firebase features will not be available."); auth = { currentUser: { uid: 'anonymous-user', email: 'anonymous@example.com', getIdToken: async () => 'dummy-token' }, onAuthStateChanged: (callback) => { callback({ uid: 'anonymous-user', email: 'anonymous@example.com', getIdToken: async () => 'dummy-token' }); return () => {}; }, signOut: async () => { console.log("Dummy sign out"); return Promise.resolve(); }, signInWithEmailAndPassword: async (email, password) => { console.log("Dummy login"); return { user: { uid: 'dummy-user', email, getIdToken: async () => 'dummy-token' } }; }, createUserWithEmailAndPassword: async (email, password) => { console.log("Dummy signup"); return { user: { uid: 'dummy-user', email, getIdToken: async () => 'dummy-token' } }; } }; db = { collection: () => ({ doc: () => ({ set: async () => console.log("Dummy set"), get: async () => ({ data: () => ({}) }), collection: () => ({ add: async () => ({ id: 'dummy-id' }), get: async () => ({ docs: [] }), doc: () => ({ update: async () => console.log("Dummy update") }) }) }) }) }; }
+        async function getIdToken() { if (auth.currentUser) { return await auth.currentUser.getIdToken(); } return null; }
+        function getUserId() { return auth.currentUser ? auth.currentUser.uid : null; }
+    </script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="app-name">
+            <span class="orange-G">G</span>radious Loan App
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="#">Description</a></li>
+            <li><a href="#">Types of loans</a></li>
+            <li><a href="loan-calculator.html" class="active">Loan-Calculator</a></li>
+            <li><a href="apply-loan.html">Apply Loan</a></li>
+            <li><a href="loan-status.html">Status</a></li>
+            <li><a href="login.html">Login</a></li>
+            <li><a href="signup.html">Signup</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <h2>LOAN CALCULATOR</h2>
+            <form id="loanCalculatorForm">
+                <div class="form-group">
+                    <label for="loanAmount">Enter Loan Amount</label>
+                    <input type="number" id="loanAmount" name="loanAmount" placeholder="e.g., 100000" required>
+                </div>
+                <div class="form-group">
+                    <label for="interestRate">Interest Rate (p.a)</label>
+                    <input type="number" id="interestRate" name="interestRate" step="0.01" placeholder="e.g., 8.5" required>
+                </div>
+                <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                    <div style="flex: 1;">
+                        <label for="duration">Duration</label>
+                        <input type="number" id="duration" name="duration" placeholder="e.g., 5" required style="width: calc(100% - 20px);">
+                    </div>
+                    <div style="flex: 0; margin-left: 20px; display: flex; align-items: center;">
+                        <input type="checkbox" id="durationInYears" name="durationInYears" checked>
+                        <label for="durationInYears" style="margin-bottom: 0;">Duration in Years</label>
+                    </div>
+                </div>
+                <button type="submit" class="btn">Calculate EMI</button>
+            </form>
+
+            <div id="calculatorResults" class="calculator-results" style="display: none;">
+                <p>Monthly EMI: <strong id="monthlyEmi"></strong></p>
+                <p>Total Interest Payable: <strong id="totalInterest"></strong></p>
+                <p>Principal Amount: <strong id="principalAmount"></strong></p>
+                <p>Total Amount Payable: <strong id="totalAmountPayable"></strong></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loanCalculatorForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const loanAmount = parseFloat(document.getElementById('loanAmount').value);
+            const interestRate = parseFloat(document.getElementById('interestRate').value);
+            let duration = parseFloat(document.getElementById('duration').value);
+            const isDurationInYears = document.getElementById('durationInYears').checked;
+
+            if (isNaN(loanAmount) || isNaN(interestRate) || isNaN(duration) || loanAmount <= 0 || interestRate < 0 || duration <= 0) {
+                alert('Please enter valid positive numbers for all fields.');
+                return;
+            }
+
+            const monthlyInterestRate = (interestRate / 100) / 12;
+            const numberOfPayments = isDurationInYears ? duration * 12 : duration;
+
+            let emi = 0;
+            if (monthlyInterestRate === 0) {
+                emi = loanAmount / numberOfPayments;
+            } else {
+                emi = loanAmount * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numberOfPayments) / (Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1);
+            }
+
+            const totalAmountPayable = emi * numberOfPayments;
+            const totalInterestPayable = totalAmountPayable - loanAmount;
+
+            document.getElementById('monthlyEmi').textContent = '₹' + emi.toFixed(2);
+            document.getElementById('totalInterest').textContent = '₹' + totalInterestPayable.toFixed(2);
+            document.getElementById('principalAmount').textContent = '₹' + loanAmount.toFixed(2);
+            document.getElementById('totalAmountPayable').textContent = '₹' + totalAmountPayable.toFixed(2);
+
+            document.getElementById('calculatorResults').style.display = 'block';
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentPath = window.location.pathname.split('/').pop();
+            const navLinks = document.querySelectorAll('.nav-links a');
+            navLinks.forEach(link => {
+                const linkPath = link.href.split('/').pop();
+                link.classList.remove('active');
+                if (linkPath === currentPath || (currentPath === '' && linkPath === 'index.html')) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

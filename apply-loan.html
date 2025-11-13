@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gradious Loan App - Apply for a Loan</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script>
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'gradious-loan-app-default';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        let app, auth, db;
+        if (Object.keys(firebaseConfig).length > 0 && typeof firebase !== 'undefined' && typeof firebase.initializeApp === 'function') {
+            app = firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.firestore();
+            if (initialAuthToken) { auth.signInWithCustomToken(initialAuthToken).then(() => { console.log("Firebase client signed in with custom token."); }).catch((error) => { console.error("Error signing in with custom token:", error); auth.signInAnonymously().then(() => console.log("Signed in anonymously.")).catch(e => console.error("Anon sign-in failed", e)); }); } else if (!auth.currentUser) { auth.signInAnonymously().then(() => { console.log("Firebase client signed in anonymously."); }).catch((error) => { console.error("Error signing in anonymously:", error); }); }
+        } else { console.warn("Firebase config not found or SDK not loaded. Firebase features will not be available."); auth = { currentUser: { uid: 'anonymous-user', email: 'anonymous@example.com', getIdToken: async () => 'dummy-token' }, onAuthStateChanged: (callback) => { callback({ uid: 'anonymous-user', email: 'anonymous@example.com', getIdToken: async () => 'dummy-token' }); return () => {}; }, signOut: async () => { console.log("Dummy sign out"); return Promise.resolve(); }, signInWithEmailAndPassword: async (email, password) => { console.log("Dummy login"); return { user: { uid: 'dummy-user', email, getIdToken: async () => 'dummy-token' } }; }, createUserWithEmailAndPassword: async (email, password) => { console.log("Dummy signup"); return { user: { uid: 'dummy-user', email, getIdToken: async () => 'dummy-token' } }; } }; db = { collection: () => ({ doc: () => ({ set: async () => console.log("Dummy set"), get: async () => ({ data: () => ({}) }), collection: () => ({ add: async () => ({ id: 'dummy-id' }), get: async () => ({ docs: [] }), doc: () => ({ update: async () => console.log("Dummy update") }) }) }) }) }; }
+        async function getIdToken() { if (auth.currentUser) { return await auth.currentUser.getIdToken(); } return null; }
+        function getUserId() { return auth.currentUser ? auth.currentUser.uid : null; }
+    </script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="app-name">
+            <span class="orange-G">G</span>radious Loan App
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="#">Description</a></li>
+            <li><a href="#">Types of loans</a></li>
+            <li><a href="loan-calculator.html">Loan-Calculator</a></li>
+            <li><a href="apply-loan.html" class="active">Apply Loan</a></li>
+            <li><a href="loan-status.html">Status</a></li>
+            <li><a href="login.html">Login</a></li>
+            <li><a href="signup.html">Signup</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <h2>Apply for a Loan</h2>
+            <form id="applyLoanForm">
+                <div class="form-group">
+                    <label for="loanType">Type of Loan:</label>
+                    <select id="loanType" name="loanType" required>
+                        <option value="personal">Personal</option>
+                        <option value="home">Home Loan</option>
+                        <option value="car">Car Loan</option>
+                        <option value="education">Education Loan</option>
+                        <option value="business">Business Loan</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="purpose">Purpose of Loan:</label>
+                    <input type="text" id="purpose" name="purpose" placeholder="e.g., Debt consolidation" required>
+                </div>
+                <div class="form-group">
+                    <label for="panNumber">PAN Number:</label>
+                    <input type="text" id="panNumber" name="panNumber" placeholder="e.g., ABCDE1234F" required>
+                </div>
+                <div class="form-group">
+                    <label for="idProof">Upload ID Proof:</label>
+                    <input type="file" id="idProof" name="idProof" accept=".pdf,.jpg,.png" required>
+                </div>
+                <input type="hidden" id="requestedLoanAmountHidden" value="100000">
+                <input type="hidden" id="monthlyEmiHidden" value="580">
+                <input type="hidden" id="totalInterestHidden" value="261927">
+                <input type="hidden" id="principalAmountHidden" value="100000">
+                <input type="hidden" id="totalAmountPayableHidden" value="361927">
+
+                <button type="button" class="btn" id="calculateLoanDetails">Calculate Loan Details</button>
+            </form>
+
+            <div id="loanDetailsSection" class="calculator-results" style="display: none; margin-top: 30px;">
+                <div class="form-group">
+                    <label for="displayPanNumber">PAN Card Number:</label>
+                    <input type="text" id="displayPanNumber" name="displayPanNumber" value="ABCDE1234F" readonly style="width: calc(100% - 20px);">
+                </div>
+                <div class="form-group">
+                    <label for="requestedLoanAmount">Requested Loan Amount (₹):</label>
+                    <input type="number" id="requestedLoanAmount" name="requestedLoanAmount" value="100000" readonly style="width: calc(100% - 20px);">
+                </div>
+
+                <p>Monthly EMI: <strong id="calculatedMonthlyEmi">₹580</strong></p>
+                <p>Total Interest Payable: <strong id="calculatedTotalInterest">₹2,61,927</strong></p>
+                <p>Principal Amount: <strong id="calculatedPrincipalAmount">₹1,00,000</strong></p>
+                <p>Total Amount Payable: <strong id="calculatedTotalAmountPayable">₹3,61,927</strong></p>
+
+                <button type="submit" class="btn" form="applyLoanForm">Submit Application</button>
+            </div>
+            <div id="applyLoanMessage" class="message" style="display: none; margin-top: 15px;"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('calculateLoanDetails').addEventListener('click', function() {
+            const panNumber = document.getElementById('panNumber').value;
+            const loanAmount = parseFloat(document.getElementById('requestedLoanAmountHidden').value);
+            const monthlyEmi = parseFloat(document.getElementById('monthlyEmiHidden').value);
+            const totalInterest = parseFloat(document.getElementById('totalInterestHidden').value);
+            const principalAmount = parseFloat(document.getElementById('principalAmountHidden').value);
+            const totalAmountPayable = parseFloat(document.getElementById('totalAmountPayableHidden').value);
+
+            if (panNumber.length === 0 || !document.getElementById('idProof').files.length) {
+                alert('Please fill in all details and upload ID proof before calculating.');
+                return;
+            }
+
+            document.getElementById('displayPanNumber').value = panNumber;
+            document.getElementById('requestedLoanAmount').value = loanAmount;
+            document.getElementById('calculatedMonthlyEmi').textContent = `₹${monthlyEmi.toFixed(2)}`;
+            document.getElementById('calculatedTotalInterest').textContent = `₹${totalInterest.toFixed(2)}`;
+            document.getElementById('calculatedPrincipalAmount').textContent = `₹${principalAmount.toFixed(2)}`;
+            document.getElementById('calculatedTotalAmountPayable').textContent = `₹${totalAmountPayable.toFixed(2)}`;
+
+            document.getElementById('loanDetailsSection').style.display = 'block';
+        });
+
+        document.getElementById('applyLoanForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const applyLoanMessage = document.getElementById('applyLoanMessage');
+
+            const loanType = document.getElementById('loanType').value;
+            const purpose = document.getElementById('purpose').value;
+            const panNumber = document.getElementById('panNumber').value;
+            const idProofFile = document.getElementById('idProof').files[0];
+
+            const requestedLoanAmount = parseFloat(document.getElementById('requestedLoanAmountHidden').value);
+            const monthlyEmi = parseFloat(document.getElementById('monthlyEmiHidden').value);
+            const totalInterest = parseFloat(document.getElementById('totalInterestHidden').value);
+            const principalAmount = parseFloat(document.getElementById('principalAmountHidden').value);
+            const totalAmountPayable = parseFloat(document.getElementById('totalAmountPayableHidden').value);
+
+            if (!getUserId()) {
+                applyLoanMessage.textContent = 'Please log in to submit a loan application.';
+                applyLoanMessage.style.color = '#dc3545';
+                applyLoanMessage.style.display = 'block';
+                return;
+            }
+
+            try {
+                const idToken = await getIdToken();
+                if (!idToken) {
+                    throw new Error('No authentication token found. Please log in.');
+                }
+
+                const response = await fetch('/api/apply-loan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${idToken}`
+                    },
+                    body: JSON.stringify({
+                        loanType,
+                        purpose,
+                        panNumber,
+                        requestedLoanAmount,
+                        monthlyEmi,
+                        totalInterest,
+                        principalAmount,
+                        totalAmountPayable,
+                        idProofFileName: idProofFile ? idProofFile.name : 'No file uploaded'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    applyLoanMessage.textContent = 'Loan application submitted successfully! Application ID: ' + data.applicationId;
+                    applyLoanMessage.style.color = '#ff8c00';
+                    applyLoanMessage.style.display = 'block';
+                    setTimeout(() => {
+                        window.location.href = 'loan-status.html';
+                    }, 2000);
+                } else {
+                    applyLoanMessage.textContent = data.message || 'Failed to submit loan application.';
+                    applyLoanMessage.style.color = '#dc3545';
+                    applyLoanMessage.style.display = 'block';
+                }
+
+            } catch (error) {
+                console.error('Error submitting loan application:', error);
+                applyLoanMessage.textContent = error.message || 'An unexpected error occurred.';
+                applyLoanMessage.style.color = '#dc3545';
+                applyLoanMessage.style.display = 'block';
+            }
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentPath = window.location.pathname.split('/').pop();
+            const navLinks = document.querySelectorAll('.nav-links a');
+            navLinks.forEach(link => {
+                const linkPath = link.href.split('/').pop();
+                link.classList.remove('active');
+                if (linkPath === currentPath || (currentPath === '' && linkPath === 'index.html')) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

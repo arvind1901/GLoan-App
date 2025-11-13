@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gradious Loan App - Signup</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script>
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'gradious-loan-app-default';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        let app, auth, db;
+        if (Object.keys(firebaseConfig).length > 0 && typeof firebase !== 'undefined' && typeof firebase.initializeApp === 'function') {
+            app = firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.firestore();
+            if (initialAuthToken) { auth.signInWithCustomToken(initialAuthToken).then(() => { console.log("Firebase client signed in with custom token."); }).catch((error) => { console.error("Error signing in with custom token:", error); auth.signInAnonymously().then(() => console.log("Signed in anonymously.")).catch(e => console.error("Anon sign-in failed", e)); }); } else if (!auth.currentUser) { auth.signInAnonymously().then(() => { console.log("Firebase client signed in anonymously."); }).catch((error) => { console.error("Error signing in anonymously:", error); }); }
+        } else { console.warn("Firebase config not found or SDK not loaded. Firebase features will not be available."); auth = { currentUser: { uid: 'anonymous-user', email: 'anonymous@example.com', getIdToken: async () => 'dummy-token' }, onAuthStateChanged: (callback) => { callback({ uid: 'anonymous-user', email: 'anonymous@example.com', getIdToken: async () => 'dummy-token' }); return () => {}; }, signOut: async () => { console.log("Dummy sign out"); return Promise.resolve(); }, signInWithEmailAndPassword: async (email, password) => { console.log("Dummy login"); return { user: { uid: 'dummy-user', email, getIdToken: async () => 'dummy-token' } }; }, createUserWithEmailAndPassword: async (email, password) => { console.log("Dummy signup"); return { user: { uid: 'dummy-user', email, getIdToken: async () => 'dummy-token' } }; } }; db = { collection: () => ({ doc: () => ({ set: async () => console.log("Dummy set"), get: async () => ({ data: () => ({}) }), collection: () => ({ add: async () => ({ id: 'dummy-id' }), get: async () => ({ docs: [] }), doc: () => ({ update: async () => console.log("Dummy update") }) }) }) }) }; }
+        async function getIdToken() { if (auth.currentUser) { return await auth.currentUser.getIdToken(); } return null; }
+        function getUserId() { return auth.currentUser ? auth.currentUser.uid : null; }
+    </script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="app-name">
+            <span class="orange-G">G</span>radious Loan App
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="#">Description</a></li>
+            <li><a href="#">Types of loans</a></li>
+            <li><a href="loan-calculator.html">Loan-Calculator</a></li>
+            <li><a href="apply-loan.html">Apply Loan</a></li>
+            <li><a href="loan-status.html">Status</a></li>
+            <li><a href="login.html">Login</a></li>
+            <li><a href="signup.html" class="active">Signup</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <h2>Signup</h2>
+            <form id="signupForm">
+                <div class="form-group">
+                    <label for="signup-email">Email :</label>
+                    <input type="email" id="signup-email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-password">Password :</label>
+                    <input type="password" id="signup-password" name="password" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirm-password">Confirm Password :</label>
+                    <input type="password" id="confirm-password" name="confirm-password" required>
+                </div>
+                <div class="form-group">
+                    <label for="mobile">Mobile :</label>
+                    <input type="text" id="mobile" name="mobile" pattern="[0-9]{10}" title="Please enter a 10-digit mobile number" required>
+                </div>
+                <button type="submit" class="btn">Signup</button>
+            </form>
+            <p class="message" style="margin-top: 15px; font-size: 14px;">Already have an account? <a href="login.html" style="color: #ff8c00; text-decoration: none; font-weight: bold;">Login here</a></p>
+            <div id="signupMessage" class="message" style="display: none; margin-top: 15px;"></div>
+        </div>
+    </div>
+    <script>
+        document.getElementById('signupForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            const mobile = document.getElementById('mobile').value;
+            const signupMessage = document.getElementById('signupMessage');
+
+            if (password !== confirmPassword) {
+                signupMessage.textContent = 'Passwords do not match.';
+                signupMessage.style.color = '#dc3545';
+                signupMessage.style.display = 'block';
+                return;
+            }
+
+            try {
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+
+                // Send user data to your backend for additional storage (e.g., mobile number)
+                const response = await fetch('/api/signup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password, mobile })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    signupMessage.textContent = 'Signup successful! Please login.';
+                    signupMessage.style.color = '#ff8c00';
+                    signupMessage.style.display = 'block';
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 1500);
+                } else {
+                    signupMessage.textContent = data.message || 'Signup failed.';
+                    signupMessage.style.color = '#dc3545';
+                    signupMessage.style.display = 'block';
+                }
+
+            } catch (error) {
+                console.error('Signup error:', error);
+                let errorMessage = 'Signup failed. Please try again.';
+                if (error.code === 'auth/email-already-in-use') {
+                    errorMessage = 'This email is already registered.';
+                } else if (error.code === 'auth/weak-password') {
+                    errorMessage = 'Password should be at least 6 characters.';
+                } else if (error.code === 'auth/invalid-email') {
+                    errorMessage = 'Invalid email format.';
+                }
+                signupMessage.textContent = errorMessage;
+                signupMessage.style.color = '#dc3545';
+                signupMessage.style.display = 'block';
+            }
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentPath = window.location.pathname.split('/').pop();
+            const navLinks = document.querySelectorAll('.nav-links a');
+            navLinks.forEach(link => {
+                const linkPath = link.href.split('/').pop();
+                link.classList.remove('active');
+                if (linkPath === currentPath || (currentPath === '' && linkPath === 'index.html')) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

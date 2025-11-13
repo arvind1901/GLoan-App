@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gradious Loan App - Loan Status</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script>
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'gradious-loan-app-default';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        let app, auth, db;
+        if (Object.keys(firebaseConfig).length > 0 && typeof firebase !== 'undefined' && typeof firebase.initializeApp === 'function') {
+            app = firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.firestore();
+            if (initialAuthToken) { auth.signInWithCustomToken(initialAuthToken).then(() => { console.log("Firebase client signed in with custom token."); }).catch((error) => { console.error("Error signing in with custom token:", error); auth.signInAnonymously().then(() => console.log("Signed in anonymously.")).catch(e => console.error("Anon sign-in failed", e)); }); } else if (!auth.currentUser) { auth.signInAnonymously().then(() => { console.log("Firebase client signed in anonymously."); }).catch((error) => { console.error("Error signing in anonymously:", error); }); }
+        } else { console.warn("Firebase config not found or SDK not loaded. Firebase features will not be available."); auth = { currentUser: { uid: 'anonymous-user', email: 'anonymous@example.com', getIdToken: async () => 'dummy-token' }, onAuthStateChanged: (callback) => { callback({ uid: 'anonymous-user', email: 'anonymous@example.com', getIdToken: async () => 'dummy-token' }); return () => {}; }, signOut: async () => { console.log("Dummy sign out"); return Promise.resolve(); }, signInWithEmailAndPassword: async (email, password) => { console.log("Dummy login"); return { user: { uid: 'dummy-user', email, getIdToken: async () => 'dummy-token' } }; }, createUserWithEmailAndPassword: async (email, password) => { console.log("Dummy signup"); return { user: { uid: 'dummy-user', email, getIdToken: async () => 'dummy-token' } }; } }; db = { collection: () => ({ doc: () => ({ set: async () => console.log("Dummy set"), get: async () => ({ data: () => ({}) }), collection: () => ({ add: async () => ({ id: 'dummy-id' }), get: async () => ({ docs: [] }), doc: () => ({ update: async () => console.log("Dummy update") }) }) }) }) }; }
+        async function getIdToken() { if (auth.currentUser) { return await auth.currentUser.getIdToken(); } return null; }
+        function getUserId() { return auth.currentUser ? auth.currentUser.uid : null; }
+    </script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="app-name">
+            <span class="orange-G">G</span>radious Loan App
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="#">Description</a></li>
+            <li><a href="#">Types of loans</a></li>
+            <li><a href="loan-calculator.html">Loan-Calculator</a></li>
+            <li><a href="apply-loan.html">Apply Loan</a></li>
+            <li><a href="loan-status.html" class="active">Status</a></li>
+            <li><a href="login.html">Login</a></li>
+            <li><a href="signup.html">Signup</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <div class="card" style="max-width: 800px; text-align: left;">
+            <h2>LOAN STATUS</h2>
+            <div id="userIdDisplay" style="margin-bottom: 20px; font-weight: bold; color: #ff8c00;">
+                Your User ID: Loading...
+            </div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Application No</th>
+                        <th>Applied Date</th>
+                        <th>Application type</th>
+                        <th>Status</th>
+                        <th>Repayment</th>
+                    </tr>
+                </thead>
+                <tbody id="loanStatusTableBody">
+                    <tr><td colspan="5" style="text-align: center;">Loading loan applications...</td></tr>
+                </tbody>
+            </table>
+            <div id="statusMessage" class="message" style="display: none; margin-top: 15px;"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const userIdDisplay = document.getElementById('userIdDisplay');
+            const loanStatusTableBody = document.getElementById('loanStatusTableBody');
+            const statusMessage = document.getElementById('statusMessage');
+
+            auth.onAuthStateChanged(async (user) => {
+                if (user) {
+                    userIdDisplay.textContent = `Your User ID: ${user.uid}`;
+                    try {
+                        const idToken = await getIdToken();
+                        if (!idToken) {
+                            throw new Error('Authentication token not found. Please log in again.');
+                        }
+
+                        const response = await fetch('/api/loan-status', {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${idToken}`
+                            }
+                        });
+
+                        const applications = await response.json();
+
+                        if (response.ok) {
+                            loanStatusTableBody.innerHTML = '';
+                            if (applications.length === 0) {
+                                loanStatusTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No loan applications found.</td></tr>';
+                            } else {
+                                applications.forEach(app => {
+                                    const row = document.createElement('tr');
+                                    const appliedDate = app.appliedDate ? new Date(app.appliedDate._seconds * 1000).toLocaleDateString() : 'N/A';
+                                    const statusClass = app.status === 'Approved' ? 'status-approved' : '';
+                                    row.innerHTML = `
+                                        <td>${app.applicationId || app.id}</td>
+                                        <td>${appliedDate}</td>
+                                        <td>${app.loanType}</td>
+                                        <td class="${statusClass}">${app.status}</td>
+                                        <td>${app.repayment || '-'}</td>
+                                    `;
+                                    loanStatusTableBody.appendChild(row);
+                                });
+                            }
+                        } else {
+                            statusMessage.textContent = applications.message || 'Failed to fetch loan status.';
+                            statusMessage.style.color = '#dc3545';
+                            statusMessage.style.display = 'block';
+                            loanStatusTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Error loading applications.</td></tr>';
+                        }
+                    } catch (error) {
+                        console.error('Error fetching loan status:', error);
+                        statusMessage.textContent = error.message || 'An unexpected error occurred while fetching data.';
+                        statusMessage.style.color = '#dc3545';
+                        statusMessage.style.display = 'block';
+                        loanStatusTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Error loading applications.</td></tr>';
+                    }
+                } else {
+                    userIdDisplay.textContent = 'Your User ID: Not logged in';
+                    loanStatusTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Please log in to view your loan status.</td></tr>';
+                    statusMessage.textContent = 'You are not logged in. Please log in to view your loan applications.';
+                    statusMessage.style.color = '#dc3545';
+                    statusMessage.style.display = 'block';
+                }
+            });
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentPath = window.location.pathname.split('/').pop();
+            const navLinks = document.querySelectorAll('.nav-links a');
+            navLinks.forEach(link => {
+                const linkPath = link.href.split('/').pop();
+                link.classList.remove('active');
+                if (linkPath === currentPath || (currentPath === '' && linkPath === 'index.html')) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
